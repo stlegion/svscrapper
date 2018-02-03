@@ -2,16 +2,17 @@ const Auth = require('./auth');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 
+const RESULT_FILE = 'result.json';
 const HEADLESS = false;
-const VK_URLS = ['https://vk.com/id243451378', 'https://vk.com/id317908041', 'https://vk.com/lastcallfilm'];
-// const VK_URLS = ['https://vk.com/id243451378', 'https://vk.com/id317908041'];
+// const VK_URLS = ['https://vk.com/id243451378', 'https://vk.com/id317908041', 'https://vk.com/lastcallfilm'];
+const VK_URLS = ['https://vk.com/id243451378', 'https://vk.com/id317908041'];
 // const VK_URLS = ['https://vk.com/lastcallfilm'];
 
 let browser;
 let results = {};
 let page;
 
-(async () => {
+async function scrap() {
     browser = await puppeteer.launch({headless: HEADLESS, dumpio: true});
     page = await browser.newPage();
     await page.goto('https://vk.com');
@@ -20,7 +21,7 @@ let page;
 
     await scrapVk();
     await browser.close();
-})();
+}
 
 const scrapVk = async () => {
     for (let i = 0; i < VK_URLS.length; i++) {
@@ -40,7 +41,7 @@ const scrapVk = async () => {
         results[url] = urlResults;
     }
 
-    await fs.writeFile('../result.json', JSON.stringify(results), err => {
+    await fs.writeFile(RESULT_FILE, JSON.stringify(results), err => {
         if (err) throw err;
         console.log("results file was saved!");
     });
@@ -127,3 +128,5 @@ const scrapVkParticipants = async urlResults => {
 const isPersonalPage = async () => {
     return 0 !== await page.evaluate(() => document.querySelectorAll('.page_counter').length);
 };
+
+module.exports.scrap = scrap;

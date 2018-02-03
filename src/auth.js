@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 function Auth(page) {
-    const VK_COOKIES_FILE = '../vk_cookies.json';
+    const VK_COOKIES_FILE = 'vk_cookies.json';
     const AWAIT_LOGIN_TIMEOUT = 60000 * 5;//5 min
 
     this.page = page;
