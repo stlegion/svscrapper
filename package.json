@@ -1,0 +1,14 @@
+{
+  "name": "svscrapper",
+  "version": "1.0.0",
+  "description": "scrapper for vk, fb etc.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "puppeteer": "^1.0.0"
+  }
+}
