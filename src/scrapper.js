@@ -1,19 +1,14 @@
+const config = require('../config');
 const Auth = require('./auth');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-
-const RESULT_FILE = 'result.json';
-const HEADLESS = false;
-// const VK_URLS = ['https://vk.com/id243451378', 'https://vk.com/id317908041', 'https://vk.com/lastcallfilm'];
-const VK_URLS = ['https://vk.com/id243451378', 'https://vk.com/id317908041'];
-// const VK_URLS = ['https://vk.com/lastcallfilm'];
 
 let browser;
 let results = {};
 let page;
 
 async function scrap() {
-    browser = await puppeteer.launch({headless: HEADLESS, dumpio: true});
+    browser = await puppeteer.launch({headless: config.headless, dumpio: true});
     page = await browser.newPage();
     await page.goto('https://vk.com');
     await page.waitFor(1000);
@@ -24,8 +19,8 @@ async function scrap() {
 }
 
 const scrapVk = async () => {
-    for (let i = 0; i < VK_URLS.length; i++) {
-        let url = VK_URLS[i];
+    for (let i = 0; i < config.vkUrls.length; i++) {
+        let url = config.vkUrls[i];
         let urlResults = {};
         await page.goto(url);
         await page.waitFor(1000);
@@ -41,7 +36,7 @@ const scrapVk = async () => {
         results[url] = urlResults;
     }
 
-    await fs.writeFile(RESULT_FILE, JSON.stringify(results), err => {
+    await fs.writeFile(config.resultsFile, JSON.stringify(results), err => {
         if (err) throw err;
         console.log("results file was saved!");
     });
@@ -61,19 +56,23 @@ const scrapVkSubscribers = async urlResults => {
     return await scrapFriendsOrSubscribersData('subscriber', urlResults);
 };
 
-const scrapFriendsOrSubscribersData = async (key, urlResults, selector) => {
-    return await page.evaluate((key, urlResults, selector) => {
+const scrapFriendsOrSubscribersData = async (key, urlResults, selector, city) => {
+    return await page.evaluate((key, urlResults, selector, city) => {
         [...document.querySelectorAll(selector)]
             .forEach(a => {
                 let userId = a.href.split('/').pop();
-                if (!urlResults[userId]) {
-                    urlResults[userId] = {};
+                let user = urlResults[userId];
+                if (!user) {
+                    user = urlResults[userId] = {};
                 }
-                urlResults[userId].name = a.text;
-                urlResults[userId][key] = true;
+                user.name = a.text;
+                user[key] = true;
+                if (city) {
+                    user.city = city;
+                }
             });
         return urlResults;
-    }, key, urlResults, selector);
+    }, key, urlResults, selector, city);
 };
 
 const clickFriendsOrSubscribersButton = async buttonHrefFragment => {
@@ -118,11 +117,24 @@ const scrapVkParticipants = async urlResults => {
     await page.click('#region_filter');
     await page.keyboard.type('Россия', {delay: 100});
     await page.keyboard.press('Enter');
+    await page.waitFor(500);
 
-    await scrollContainerToBottom('html');
-    urlResults = await scrapFriendsOrSubscribersData('participant', urlResults, '.labeled.name > a');
+    for (let i = 0; i < config.cities.length; i++) {
+        urlResults = await scrapVkParticipantsByCity(config.cities[i], urlResults);
+    }
 
     return urlResults;
+};
+
+const scrapVkParticipantsByCity = async (city, urlResults) => {
+    await page.click('#container2 input.selector_input');
+    await page.keyboard.type(city, {delay: 100});
+    await page.waitFor(500);
+    await page.keyboard.press('Enter');
+    await page.waitFor(300);
+    await page.evaluate(() => document.querySelector('#container2 input.selector_input').value = '');
+    await scrollContainerToBottom('html');
+    return await scrapFriendsOrSubscribersData('participant', urlResults, '.labeled.name > a', city);
 };
 
 const isPersonalPage = async () => {
